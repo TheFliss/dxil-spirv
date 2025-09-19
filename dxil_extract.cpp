@@ -175,7 +175,9 @@ int main(int argc, char **argv)
 
 	if (output.empty())
 	{
-		dxil_spv_parsed_blob_dump_llvm_ir(blob);
+		FILE *file = fopen("llvm_module_dump.dxil", "w");
+		dxil_spv_parsed_blob_dump_llvm_ir(blob, file);
+		fclose(file);
 		dxil_spv_parsed_blob_free(blob);
 		return EXIT_SUCCESS;
 	}

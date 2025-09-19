@@ -200,9 +200,9 @@ static void print_help()
 struct Arguments
 {
 	std::string input_path;
+	std::string dxil_dump_path;
 	std::string output_path;
 	std::string entry_point;
-	bool dump_module = false;
 	bool glsl = false;
 	bool emit_asm = false;
 	bool validate = false;
@@ -633,7 +633,7 @@ int main(int argc, char **argv)
 		print_help();
 		parser.end();
 	});
-	cbs.add("--dump-module", [&](CLIParser &) { args.dump_module = true; });
+	cbs.add("--dump-module", [&](CLIParser &parser) { args.dxil_dump_path = parser.next_string(); });
 	cbs.add("--glsl", [&](CLIParser &) { args.glsl = true; });
 	cbs.add("--asm", [&](CLIParser &) { args.emit_asm = true; });
 	cbs.add("--validate", [&](CLIParser &) { args.validate = true; });
@@ -926,8 +926,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (args.dump_module)
-		dxil_spv_parsed_blob_dump_llvm_ir(blob);
+	if (!args.dxil_dump_path.empty()){
+		FILE *file = fopen(args.dxil_dump_path.c_str(), "w");
+		dxil_spv_parsed_blob_dump_llvm_ir(blob, file);
+		if(reflection_blob)
+			dxil_spv_parsed_blob_dump_llvm_ir(reflection_blob, file);
+		fclose(file);
+	}
 
 	dxil_spv_converter converter;
 	if (dxil_spv_create_converter_with_reflection(blob, reflection_blob, &converter) != DXIL_SPV_SUCCESS)

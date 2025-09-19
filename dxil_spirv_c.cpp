@@ -513,13 +513,19 @@ dxil_spv_result dxil_spv_parse_dxil(const void *data, size_t size, dxil_spv_pars
 	return DXIL_SPV_SUCCESS;
 }
 
-void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob)
+void dxil_spv_parsed_blob_dump_llvm_ir(dxil_spv_parsed_blob blob, FILE *file)
 {
 	auto &module = blob->bc.get_module();
 #ifdef HAVE_LLVMBC
 	String str;
-	if (llvm::disassemble(module, str))
-		fprintf(stderr, "%s\n", str.c_str());
+	if (llvm::disassemble(module, str)){
+		if (!file)
+		{
+			LOGE("Failed to open llvm_module_dump.dxil for writing.\n");
+			return;
+		}
+		fprintf(file, "%s\n", str.c_str());
+	}
 	else
 		fprintf(stderr, "Failed to disassemble LLVM IR!\n");
 #else
