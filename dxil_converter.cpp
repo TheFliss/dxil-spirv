@@ -1225,6 +1225,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
 
+		LOGI("srv name: %s\n", name.c_str());
+
 		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
 		{
 			// This seems to be possible in RT shaders when explicit register() is missing?
@@ -1349,12 +1351,13 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				heap_offset += bind_register - local_table_entry.register_index;
 
 				auto &ref = srv_index_to_reference[index];
-				if (aliased_access.requires_alias_decoration)
-				{
-					ref.var_alias_group = create_bindless_heap_variable_alias_group(
-						bindless_info, aliased_access.raw_declarations);
-				}
-				else if (aliased_access.override_primary_component_types)
+				//if (aliased_access.requires_alias_decoration)
+				//{
+				//	ref.var_alias_group = create_bindless_heap_variable_alias_group(
+				//		bindless_info, aliased_access.raw_declarations);
+				//}
+				//else 
+				if (aliased_access.override_primary_component_types)
 				{
 					auto tmp_info = bindless_info;
 					tmp_info.component = aliased_access.primary_component_type;
@@ -1434,12 +1437,13 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				heap_offset -= bind_register;
 
 			auto &ref = srv_index_to_reference[index];
-			if (aliased_access.requires_alias_decoration)
-			{
-				ref.var_alias_group = create_bindless_heap_variable_alias_group(
-					bindless_info, aliased_access.raw_declarations);
-			}
-			else if (aliased_access.override_primary_component_types)
+			//if (aliased_access.requires_alias_decoration)
+			//{
+			//	ref.var_alias_group = create_bindless_heap_variable_alias_group(
+			//		bindless_info, aliased_access.raw_declarations);
+			//}
+			//else 
+			if (aliased_access.override_primary_component_types)
 			{
 				auto tmp_info = bindless_info;
 				tmp_info.component = aliased_access.primary_component_type;
@@ -1497,8 +1501,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 
 			if (type_id)
 				ref.var_id = create_variable(storage, type_id, name.empty() ? nullptr : name.c_str());
-			else if (aliased_access.requires_alias_decoration)
-				ref.var_alias_group = create_raw_ssbo_variable_alias_group(aliased_access.raw_declarations, range_size, name);
+			//else if (aliased_access.requires_alias_decoration)
+			//	ref.var_alias_group = create_raw_ssbo_variable_alias_group(aliased_access.raw_declarations, range_size, name);
 			else
 			{
 				assert(aliased_access.raw_declarations.size() == 1);
@@ -1523,8 +1527,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 
 			if (ref.var_id)
 				decorate_variable(ref.var_id);
-			for (auto &var : ref.var_alias_group)
-				decorate_variable(var.var_id);
+			//for (auto &var : ref.var_alias_group)
+			//	decorate_variable(var.var_id);
 
 			ref.aliased = aliased_access.requires_alias_decoration;
 			ref.base_resource_is_array = range_size != 1;
@@ -1552,17 +1556,17 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				}
 			}
 
-			for (auto &var : ref.var_alias_group)
-			{
-				auto &meta = handle_to_resource_meta[var.var_id];
-				meta = {};
-				meta.kind = resource_kind;
-				meta.component_type = raw_width_to_component_type(var.declaration.type, var.declaration.width);
-				meta.raw_component_vecsize = var.declaration.vecsize;
-				meta.stride = stride;
-				meta.var_id = var.var_id;
-				meta.storage = storage;
-			}
+			//for (auto &var : ref.var_alias_group)
+			//{
+			//	auto &meta = handle_to_resource_meta[var.var_id];
+			//	meta = {};
+			//	meta.kind = resource_kind;
+			//	meta.component_type = raw_width_to_component_type(var.declaration.type, var.declaration.width);
+			//	meta.raw_component_vecsize = var.declaration.vecsize;
+			//	meta.stride = stride;
+			//	meta.var_id = var.var_id;
+			//	meta.storage = storage;
+			//}
 		}
 	}
 

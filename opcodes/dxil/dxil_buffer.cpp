@@ -939,7 +939,14 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	RawType raw_type = target_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
 	                   RawType::Float : RawType::Integer;
 
-	image_id = get_buffer_alias_handle(impl, meta, image_id, raw_type, width, access.raw_vec_size);
+	LOGI("pbl: %d %d\n", image_type_id, image_id);
+
+	/**
+	 * 
+	 * This is a very very weird solution
+	 * 
+	 */
+	//image_id = get_buffer_alias_handle(impl, meta, image_id, raw_type, width, access.raw_vec_size);
 	bool vectorized_load = access.raw_vec_size != RawVecSize::V1;
 
 	// Sparse information is stored in the 5th component.
@@ -1453,7 +1460,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	RawType raw_type = element_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
 	                   RawType::Float : RawType::Integer;
 
-	image_id = get_buffer_alias_handle(impl, meta, image_id, raw_type, width, access.raw_vec_size);
+	//image_id = get_buffer_alias_handle(impl, meta, image_id, raw_type, width, access.raw_vec_size);
 	bool vectorized_store = access.raw_vec_size != RawVecSize::V1;
 
 	// We could hoist the call to emit_buffer_store_values_bitcast,
