@@ -12,4 +12,7 @@
 /reference/shaders-dxil
 /reference/shaders-dxbc
 /build
+/builds
+/cmakebuilds
+/tests
 /out/build

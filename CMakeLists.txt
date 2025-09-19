@@ -42,6 +42,9 @@ elseif (MSVC)
     set(DXIL_SPV_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4244 /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
 
+# Configure to build 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/builds")
+
 add_library(dxil-utils STATIC util/thread_local_allocator.hpp util/thread_local_allocator.cpp)
 target_include_directories(dxil-utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/util)
 target_compile_options(dxil-utils PRIVATE ${DXIL_SPV_CXX_FLAGS})
