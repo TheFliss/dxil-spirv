@@ -193,6 +193,39 @@ static String get_resource_name_metadata(const llvm::MDNode *node, const llvm::M
 	return get_string_metadata(node, 2);
 }
 
+static String type_name_from_resource_kind(DXIL::ResourceKind kind)
+{
+	switch (kind)
+	{
+	case DXIL::ResourceKind::Texture1D:
+	case DXIL::ResourceKind::Texture1DArray:
+		return "1d";
+	case DXIL::ResourceKind::Texture2D:
+	case DXIL::ResourceKind::Texture2DMS:
+	case DXIL::ResourceKind::FeedbackTexture2D:
+		return "2d";
+	case DXIL::ResourceKind::Texture2DArray:
+	case DXIL::ResourceKind::Texture2DMSArray:
+	case DXIL::ResourceKind::FeedbackTexture2DArray:
+		return "2dArray";
+	case DXIL::ResourceKind::Texture3D:
+		return "3d";
+	case DXIL::ResourceKind::TextureCube:
+	case DXIL::ResourceKind::TextureCubeArray:
+		return "cube";
+
+	case DXIL::ResourceKind::TypedBuffer:
+		return "TypedBuffer";
+	case DXIL::ResourceKind::StructuredBuffer:
+		return "StructuredBuffer";
+	case DXIL::ResourceKind::RawBuffer:
+		return "RawBuffer";
+
+	default:
+		return "unknown";
+	}
+}
+
 static spv::Dim image_dimension_from_resource_kind(DXIL::ResourceKind kind)
 {
 	switch (kind)
@@ -402,7 +435,7 @@ spv::Id Converter::Impl::create_raw_ssbo_variable(const RawDeclaration &raw_decl
 	                                                raw_decl.type,
 	                                                raw_width_to_bits(raw_decl.width),
 	                                                raw_vecsize_to_vecsize(raw_decl.vecsize),
-	                                                range_size, name + "SSBO");
+	                                                range_size, name + "_SSBO");
 
 	if (raw_decl.width == RawWidth::B16)
 		builder().addCapability(spv::CapabilityStorageBuffer16BitAccess);
@@ -1225,7 +1258,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
 
-		LOGI("srv name: %s\n", name.c_str());
+		//LOGI("srv name: %s\n", name.c_str());
 
 		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
 		{
@@ -1499,6 +1532,8 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 
 			auto &ref = srv_index_to_reference[index];
 
+		//LOGI("srv type_id: %d\n", type_id);
+
 			if (type_id)
 				ref.var_id = create_variable(storage, type_id, name.empty() ? nullptr : name.c_str());
 			//else if (aliased_access.requires_alias_decoration)
@@ -1700,12 +1735,17 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		auto var_meta = get_resource_variable_meta(uav);
 		if (!var_meta.is_active)
 			continue;
+		auto *type_decoration = llvm::cast<llvm::UndefValue>(llvm::cast<llvm::ConstantAsMetadata>(uav->getOperand(1))->getValue());
+		auto *ptr_type = llvm::cast<llvm::PointerType>(type_decoration->getType());
+		spv::Id type_id1 = get_real_type_id(ptr_type->getElementType(), 0);
 
 		unsigned index = get_constant_metadata(uav, 0);
 		auto name = get_resource_name_metadata(uav, refl);
 		unsigned bind_space = get_constant_metadata(uav, 3);
 		unsigned bind_register = get_constant_metadata(uav, 4);
 		unsigned range_size = get_constant_metadata(uav, 5);
+
+		LOGI("uav name: %s real %d\n", name.c_str(), type_id1);
 
 		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
 		{
@@ -1943,12 +1983,13 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				heap_offset += bind_register - local_table_entry.register_index;
 
 				auto &ref = uav_index_to_reference[index];
-				if (aliased_access.requires_alias_decoration)
-				{
-					ref.var_alias_group = create_bindless_heap_variable_alias_group(
-						bindless_info, aliased_access.raw_declarations);
-				}
-				else if (aliased_access.override_primary_component_types)
+				//if (aliased_access.requires_alias_decoration)
+				//{
+				//	ref.var_alias_group = create_bindless_heap_variable_alias_group(
+				//		bindless_info, aliased_access.raw_declarations);
+				//}
+				//else
+				if (aliased_access.override_primary_component_types)
 				{
 					auto tmp_info = bindless_info;
 					tmp_info.component = aliased_access.primary_component_type;
@@ -2055,12 +2096,13 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				heap_offset -= bind_register;
 
 			auto &ref = uav_index_to_reference[index];
-			if (aliased_access.requires_alias_decoration)
-			{
-				ref.var_alias_group = create_bindless_heap_variable_alias_group(
-					bindless_info, aliased_access.raw_declarations);
-			}
-			else if (aliased_access.override_primary_component_types)
+			//if (aliased_access.requires_alias_decoration)
+			//{
+			//	ref.var_alias_group = create_bindless_heap_variable_alias_group(
+			//		bindless_info, aliased_access.raw_declarations);
+			//}
+			//else 
+			if (aliased_access.override_primary_component_types)
 			{
 				auto tmp_info = bindless_info;
 				tmp_info.component = aliased_access.primary_component_type;
@@ -2120,7 +2162,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		else
 		{
 			spv::Id var_id = 0;
-			Vector<RawDeclarationVariable> var_alias_group;
+			//Vector<RawDeclarationVariable> var_alias_group;
 			spv::StorageClass storage;
 
 			if (vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO)
@@ -2134,9 +2176,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 
 				storage = spv::StorageClassStorageBuffer;
 
-				if (aliased_access.requires_alias_decoration)
-					var_alias_group = create_raw_ssbo_variable_alias_group(aliased_access.raw_declarations, range_size, name);
-				else
+				//if (aliased_access.requires_alias_decoration)
+				//	var_alias_group = create_raw_ssbo_variable_alias_group(aliased_access.raw_declarations, range_size, name);
+				//else
 				{
 					assert(aliased_access.raw_declarations.size() == 1);
 					var_id = create_raw_ssbo_variable(aliased_access.raw_declarations.front(), range_size, name);
@@ -2146,6 +2188,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			{
 				// Treat default as texel buffer, as it's the more compatible way of implementing buffer types in DXIL.
 				auto element_type_id = get_type_id(effective_component_type, 1, 1);
+				
 
 				spv::Id type_id =
 				    builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
@@ -2159,6 +2202,9 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 					else
 						type_id = builder.makeArrayType(type_id, builder.makeUintConstant(range_size), 0);
 				}
+        builder.addName(type_id, String("type."+type_name_from_resource_kind(resource_kind)).c_str());
+
+				//LOGI("uav type_id: %d\n", type_id1);
 
 				storage = spv::StorageClassUniformConstant;
 				var_id = create_variable(storage, type_id,
@@ -2170,7 +2216,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 
 			auto &ref = uav_index_to_reference[index];
 			ref.var_id = var_id;
-			ref.var_alias_group = std::move(var_alias_group);
+			//ref.var_alias_group = std::move(var_alias_group);
 			ref.aliased = aliased_access.requires_alias_decoration;
 			ref.stride = stride;
 			ref.coherent = globally_coherent;
@@ -2198,8 +2244,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 
 			if (var_id)
 				decorate_variable(var_id);
-			for (auto &var : ref.var_alias_group)
-				decorate_variable(var.var_id);
+			//for (auto &var : ref.var_alias_group)
+			//	decorate_variable(var.var_id);
 
 			spv::Id counter_var_id = 0;
 			if (has_counter)
@@ -2271,18 +2317,18 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				}
 			}
 
-			for (auto &var : ref.var_alias_group)
-			{
-				auto &meta = handle_to_resource_meta[var.var_id];
-				meta = {};
-				meta.kind = resource_kind;
-				meta.stride = stride;
-				meta.var_id = var.var_id;
-				meta.storage = storage;
-				meta.component_type = raw_width_to_component_type(var.declaration.type, var.declaration.width);
-				meta.raw_component_vecsize = var.declaration.vecsize;
-				meta.vkmm = vkmm;
-			}
+			//for (auto &var : ref.var_alias_group)
+			//{
+			//	auto &meta = handle_to_resource_meta[var.var_id];
+			//	meta = {};
+			//	meta.kind = resource_kind;
+			//	meta.stride = stride;
+			//	meta.var_id = var.var_id;
+			//	meta.storage = storage;
+			//	meta.component_type = raw_width_to_component_type(var.declaration.type, var.declaration.width);
+			//	meta.raw_component_vecsize = var.declaration.vecsize;
+			//	meta.vkmm = vkmm;
+			//}
 		}
 	}
 
@@ -2386,12 +2432,12 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 
 				auto &ref = cbv_index_to_reference[index];
 
-				if (aliased_access.requires_alias_decoration)
-				{
-					ref.var_alias_group = create_bindless_heap_variable_alias_group(
-							bindless_info, aliased_access.raw_declarations);
-				}
-				else
+				//if (aliased_access.requires_alias_decoration)
+				//{
+				//	ref.var_alias_group = create_bindless_heap_variable_alias_group(
+				//			bindless_info, aliased_access.raw_declarations);
+				//}
+				//else
 				{
 					ref.var_id = create_bindless_heap_variable(bindless_info);
 				}
@@ -2460,12 +2506,12 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 
 			auto &ref = cbv_index_to_reference[index];
 
-			if (aliased_access.requires_alias_decoration)
-			{
-				ref.var_alias_group = create_bindless_heap_variable_alias_group(
-						bindless_info, aliased_access.raw_declarations);
-			}
-			else
+			//if (aliased_access.requires_alias_decoration)
+			//{
+			//	ref.var_alias_group = create_bindless_heap_variable_alias_group(
+			//			bindless_info, aliased_access.raw_declarations);
+			//}
+			//else
 			{
 				ref.var_id = create_bindless_heap_variable(bindless_info);
 			}
@@ -2483,12 +2529,12 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 		{
 			auto &ref = cbv_index_to_reference[index];
 
-			if (aliased_access.requires_alias_decoration)
-			{
-				ref.var_alias_group = create_ubo_variable_alias_group(
-						aliased_access.raw_declarations, range_size, name, cbv_size);
-			}
-			else
+			//if (aliased_access.requires_alias_decoration)
+			//{
+			//	ref.var_alias_group = create_ubo_variable_alias_group(
+			//			aliased_access.raw_declarations, range_size, name, cbv_size);
+			//}
+			//else
 			{
 				assert(aliased_access.raw_declarations.size() == 1);
 				ref.var_id = create_ubo_variable(aliased_access.raw_declarations.front(), range_size, name, cbv_size);
@@ -2514,18 +2560,18 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 				builder.addDecoration(meta.var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
 			}
 
-			for (auto &var : ref.var_alias_group)
-			{
-				auto &meta = handle_to_resource_meta[var.var_id];
-				meta = {};
-				meta.kind = ref.resource_kind;
-				meta.var_id = var.var_id;
-				meta.storage = spv::StorageClassUniform;
-				meta.component_type = raw_width_to_component_type(var.declaration.type, var.declaration.width);
-				meta.raw_component_vecsize = var.declaration.vecsize;
-				builder.addDecoration(meta.var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
-				builder.addDecoration(meta.var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
-			}
+			//for (auto &var : ref.var_alias_group)
+			//{
+			//	auto &meta = handle_to_resource_meta[var.var_id];
+			//	meta = {};
+			//	meta.kind = ref.resource_kind;
+			//	meta.var_id = var.var_id;
+			//	meta.storage = spv::StorageClassUniform;
+			//	meta.component_type = raw_width_to_component_type(var.declaration.type, var.declaration.width);
+			//	meta.raw_component_vecsize = var.declaration.vecsize;
+			//	builder.addDecoration(meta.var_id, spv::DecorationDescriptorSet, vulkan_binding.buffer.descriptor_set);
+			//	builder.addDecoration(meta.var_id, spv::DecorationBinding, vulkan_binding.buffer.binding);
+			//}
 
             if (options.extended_non_semantic_info)
             {
@@ -3372,12 +3418,13 @@ bool Converter::Impl::emit_global_heaps()
 			annotation->reference.vkmm.auto_visibility = annotation->coherent || annotation->rov;
 		}
 
-		if (aliased_access.requires_alias_decoration)
-		{
-			annotation->reference.var_alias_group = create_bindless_heap_variable_alias_group(
-			    info, aliased_access.raw_declarations);
-		}
-		else if (aliased_access.override_primary_component_types)
+		//if (aliased_access.requires_alias_decoration)
+		//{
+		//	annotation->reference.var_alias_group = create_bindless_heap_variable_alias_group(
+		//	    info, aliased_access.raw_declarations);
+		//}
+		//else 
+		if (aliased_access.override_primary_component_types)
 		{
 			auto tmp_info = info;
 			tmp_info.component = aliased_access.primary_component_type;
@@ -4087,6 +4134,79 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 
 	default:
 		return 0;
+	}
+}
+
+spv::Id Converter::Impl::get_real_type_id(const llvm::Type *type, TypeLayoutFlags flags)
+{
+	auto &builder = spirv_module.get_builder();
+	switch (type->getTypeID())
+	{
+	case llvm::Type::TypeID::PointerTyID:
+	{
+		spv::Id pointee_type = get_type_id(llvm::cast<llvm::PointerType>(type)->getElementType(), flags);
+		return builder.makePointer(spv::StorageClassPhysicalStorageBuffer, pointee_type);
+	}
+
+	case llvm::Type::TypeID::ArrayTyID:
+	{
+		if (type->getArrayNumElements() == 0)
+			return 0;
+
+		spv::Id array_size_id;
+		spv::Id element_type_id;
+
+		// dxbc2dxil emits broken code for TGSM. It's an array of i8 which is absolute nonsense.
+		// It then bitcasts the pointer to i32, which isn't legal either.
+		if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) == 0 &&
+		    type->getArrayElementType()->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
+		    type->getArrayElementType()->getIntegerBitWidth() == 8 &&
+		    type->getArrayNumElements() % 4 == 0)
+		{
+			array_size_id = builder.makeUintConstant(type->getArrayNumElements() / 4);
+			element_type_id = builder.makeUintType(32);
+		}
+		else
+		{
+			array_size_id = builder.makeUintConstant(type->getArrayNumElements());
+			element_type_id = get_real_type_id(type->getArrayElementType(), flags & ~TYPE_LAYOUT_BLOCK_BIT);
+		}
+
+		if ((flags & TYPE_LAYOUT_PHYSICAL_BIT) != 0)
+		{
+			auto size_stride = get_physical_size_for_type(element_type_id);
+			uint32_t stride = size_stride.size;
+
+			// We always use scalar layout.
+			for (auto &cached_type : cached_physical_array_types)
+				if (cached_type.element_type_id == element_type_id && cached_type.array_size_id == array_size_id)
+					return cached_type.id;
+
+			spv::Id array_type_id = builder.makeArrayType(element_type_id, array_size_id, stride);
+			builder.addDecoration(array_type_id, spv::DecorationArrayStride, stride);
+			cached_physical_array_types.push_back({ array_type_id, element_type_id, array_size_id });
+			return array_type_id;
+		}
+		else
+		{
+			// glslang emitter deduplicates.
+			return builder.makeArrayType(element_type_id, array_size_id, 0);
+		}
+	}
+
+	case llvm::Type::TypeID::StructTyID:
+	{
+		auto *struct_type = llvm::cast<llvm::StructType>(type);
+		Vector<spv::Id> member_types;
+		member_types.reserve(struct_type->getStructNumElements());
+		LOGI("StructTyID size: %d\n", struct_type->getStructNumElements());
+		for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
+			member_types.push_back(get_type_id(struct_type->getStructElementType(i), flags & ~TYPE_LAYOUT_BLOCK_BIT));
+		LOGI("member: %d\n", member_types[0]);
+		return get_struct_type(member_types, flags, "");
+	}
+	default:
+		return get_type_id(type, flags);
 	}
 }
 
