@@ -418,7 +418,7 @@ struct Converter::Impl
 	struct ResourceReference
 	{
 		spv::Id var_id = 0;
-		Vector<RawDeclarationVariable> var_alias_group;
+		//Vector<RawDeclarationVariable> var_alias_group;
 		bool aliased = false;
 
 		uint32_t push_constant_member = 0;
@@ -501,7 +501,7 @@ struct Converter::Impl
 		unsigned stride;
 
 		spv::Id var_id;
-		Vector<RawDeclarationVariable> var_alias_group;
+		//Vector<RawDeclarationVariable> var_alias_group;
 		bool aliased;
 		bool non_uniform;
 		bool rov;
@@ -545,6 +545,7 @@ struct Converter::Impl
 	};
 	using TypeLayoutFlags = uint32_t;
 
+	spv::Id get_real_type_id(const llvm::Type *type, TypeLayoutFlags flags = 0);
 	spv::Id get_type_id(const llvm::Type *type, TypeLayoutFlags flags = 0);
 	spv::Id get_type_id(spv::Id id) const;
 

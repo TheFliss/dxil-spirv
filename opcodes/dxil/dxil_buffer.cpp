@@ -939,7 +939,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	RawType raw_type = target_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
 	                   RawType::Float : RawType::Integer;
 
-	LOGI("pbl: %d %d\n", image_type_id, image_id);
+	//LOGI("pbl: %d %d\n", image_type_id, image_id);
 
 	/**
 	 * 
@@ -1605,7 +1605,7 @@ spv::Id emit_atomic_access_chain(Converter::Impl &impl,
 	auto &builder = impl.builder();
 	Operation *counter_ptr_op = nullptr;
 	component_type = raw_width_to_component_type(RawType::Integer, width);
-	spv::Id var_id = get_buffer_alias_handle(impl, meta, meta.var_id, RawType::Integer, width, RawVecSize::V1);
+	spv::Id var_id = meta.var_id;//get_buffer_alias_handle(impl, meta, meta.var_id, RawType::Integer, width, RawVecSize::V1);
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
 		spv::Id uint_type = builder.makeUintType(raw_width_to_bits(width));

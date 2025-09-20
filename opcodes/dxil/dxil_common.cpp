@@ -115,22 +115,22 @@ unsigned get_type_scalar_alignment(Converter::Impl &impl, const llvm::Type *type
 	return scalar_alignment;
 }
 
-spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
-                                spv::Id default_id, RawType type, RawWidth width, RawVecSize vecsize)
-{
-	for (auto &alias : meta.var_alias_group)
-	{
-		if (alias.declaration.type == type &&
-		    alias.declaration.width == width &&
-		    alias.declaration.vecsize == vecsize)
-		{
-			default_id = alias.var_id;
-			break;
-		}
-	}
+//spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
+//                                spv::Id default_id, RawType type, RawWidth width, RawVecSize vecsize)
+//{
+//	for (auto &alias : meta.var_alias_group)
+//	{
+//		if (alias.declaration.type == type &&
+//		    alias.declaration.width == width &&
+//		    alias.declaration.vecsize == vecsize)
+//		{
+//			default_id = alias.var_id;
+//			break;
+//		}
+//	}
 
-	return default_id;
-}
+//	return default_id;
+//}
 
 bool type_is_16bit(const llvm::Type *data_type)
 {

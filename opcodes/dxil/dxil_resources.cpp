@@ -1339,8 +1339,8 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			bool is_non_uniform = false;
 
 			spv::Id representative_var_id = reference.var_id;
-			if (!representative_var_id && !reference.var_alias_group.empty())
-				representative_var_id = reference.var_alias_group.front().var_id;
+			//if (!representative_var_id && !reference.var_alias_group.empty())
+			//	representative_var_id = reference.var_alias_group.front().var_id;
 			auto storage = get_resource_storage_class(impl, representative_var_id);
 
 			DescriptorQATypeFlagBits descriptor_type;
@@ -1353,11 +1353,11 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			else
 				descriptor_type = DESCRIPTOR_QA_TYPE_SAMPLED_IMAGE_BIT;
 
-			Vector<Converter::Impl::RawDeclarationVariable> raw_declarations;
+			//Vector<Converter::Impl::RawDeclarationVariable> raw_declarations;
 			spv::Id loaded_id = 0;
 			spv::Id offset_id = 0;
 			spv::Id resource_id = 0;
-			raw_declarations.reserve(reference.var_alias_group.size());
+			//raw_declarations.reserve(reference.var_alias_group.size());
 
 			Converter::Impl::ResourceMetaInstrumentation instrumentation = {};
 
@@ -1373,19 +1373,19 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				}
 			}
 
-			for (auto &alias : reference.var_alias_group)
-			{
-				resource_id = alias.var_id;
-				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
-												instruction, instruction_offset, non_uniform, is_non_uniform,
-												nullptr, &loaded_id, &offset_id, &instrumentation))
-				{
-					LOGE("Failed to load SRV resource handle.\n");
-					return false;
-				}
+			//for (auto &alias : reference.var_alias_group)
+			//{
+			//	resource_id = alias.var_id;
+			//	if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
+			//									instruction, instruction_offset, non_uniform, is_non_uniform,
+			//									nullptr, &loaded_id, &offset_id, &instrumentation))
+			//	{
+			//		LOGE("Failed to load SRV resource handle.\n");
+			//		return false;
+			//	}
 
-				raw_declarations.push_back({ alias.declaration, loaded_id });
-			}
+			//	raw_declarations.push_back({ alias.declaration, loaded_id });
+			//}
 
 			auto &incoming_meta = impl.handle_to_resource_meta[resource_id];
 
@@ -1402,7 +1402,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta = incoming_meta;
 			meta.non_uniform = is_non_uniform;
 			meta.index_offset_id = offset_id;
-			meta.var_alias_group = std::move(raw_declarations);
+			//meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
 			meta.physical_pointer_meta.nonwritable = true;
 			meta.instrumentation = instrumentation;
@@ -1459,8 +1459,8 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			bool is_non_uniform = false;
 
 			spv::Id representative_var_id = reference.var_id;
-			if (!representative_var_id && !reference.var_alias_group.empty())
-				representative_var_id = reference.var_alias_group.front().var_id;
+			//if (!representative_var_id && !reference.var_alias_group.empty())
+			//	representative_var_id = reference.var_alias_group.front().var_id;
 			auto storage = get_resource_storage_class(impl, representative_var_id);
 
 			DescriptorQATypeFlagBits descriptor_type;
@@ -1471,12 +1471,12 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			else
 				descriptor_type = DESCRIPTOR_QA_TYPE_STORAGE_IMAGE_BIT;
 
-			Vector<Converter::Impl::RawDeclarationVariable> raw_declarations;
+			//Vector<Converter::Impl::RawDeclarationVariable> raw_declarations;
 			spv::Id loaded_id = 0;
 			spv::Id offset_id = 0;
 			spv::Id resource_id = 0;
 			spv::Id resource_ptr_id = 0;
-			raw_declarations.reserve(reference.var_alias_group.size());
+			//raw_declarations.reserve(reference.var_alias_group.size());
 
 			Converter::Impl::ResourceMetaInstrumentation instrumentation = {};
 
@@ -1492,19 +1492,19 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				}
 			}
 
-			for (auto &alias : reference.var_alias_group)
-			{
-				resource_id = alias.var_id;
-				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
-												instruction, instruction_offset, non_uniform, is_non_uniform,
-												nullptr, &loaded_id, &offset_id, &instrumentation))
-				{
-					LOGE("Failed to load UAV resource handle.\n");
-					return false;
-				}
+			//for (auto &alias : reference.var_alias_group)
+			//{
+			//	resource_id = alias.var_id;
+			//	if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
+			//									instruction, instruction_offset, non_uniform, is_non_uniform,
+			//									nullptr, &loaded_id, &offset_id, &instrumentation))
+			//	{
+			//		LOGE("Failed to load UAV resource handle.\n");
+			//		return false;
+			//	}
 
-				raw_declarations.push_back({ alias.declaration, loaded_id });
-			}
+			//	raw_declarations.push_back({ alias.declaration, loaded_id });
+			//}
 
 			auto &incoming_meta = impl.handle_to_resource_meta[resource_id];
 
@@ -1521,7 +1521,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta = incoming_meta;
 			meta.non_uniform = is_non_uniform;
 			meta.index_offset_id = offset_id;
-			meta.var_alias_group = std::move(raw_declarations);
+			//meta.var_alias_group = std::move(raw_declarations);
 			meta.aliased = reference.aliased;
 			meta.rov = reference.rov;
 			meta.vkmm = reference.vkmm;
@@ -1687,10 +1687,10 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			auto storage = ssbo ? spv::StorageClassStorageBuffer : spv::StorageClassUniform;
 			auto descriptor_type = ssbo ? DESCRIPTOR_QA_TYPE_STORAGE_BUFFER_BIT : DESCRIPTOR_QA_TYPE_UNIFORM_BUFFER_BIT;
 
-			Vector<Converter::Impl::RawDeclarationVariable> raw_declarations;
+			//Vector<Converter::Impl::RawDeclarationVariable> raw_declarations;
 			spv::Id loaded_id = 0;
 			spv::Id resource_id = 0;
-			raw_declarations.reserve(reference.var_alias_group.size());
+			//raw_declarations.reserve(reference.var_alias_group.size());
 
 			Converter::Impl::ResourceMetaInstrumentation instrumentation = {};
 
@@ -1706,19 +1706,19 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 				}
 			}
 
-			for (auto &alias : reference.var_alias_group)
-			{
-				resource_id = alias.var_id;
-				if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
-												instruction, instruction_offset, non_uniform, is_non_uniform,
-												nullptr, &loaded_id, nullptr, &instrumentation))
-				{
-					LOGE("Failed to load CBV resource handle.\n");
-					return false;
-				}
+			//for (auto &alias : reference.var_alias_group)
+			//{
+			//	resource_id = alias.var_id;
+			//	if (!build_load_resource_handle(impl, resource_id, reference, descriptor_type,
+			//									instruction, instruction_offset, non_uniform, is_non_uniform,
+			//									nullptr, &loaded_id, nullptr, &instrumentation))
+			//	{
+			//		LOGE("Failed to load CBV resource handle.\n");
+			//		return false;
+			//	}
 
-				raw_declarations.push_back({ alias.declaration, loaded_id });
-			}
+			//	raw_declarations.push_back({ alias.declaration, loaded_id });
+			//}
 
 			auto &incoming_meta = impl.handle_to_resource_meta[resource_id];
 
@@ -1726,7 +1726,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta = incoming_meta;
 			meta.non_uniform = is_non_uniform;
 			meta.storage = storage;
-			meta.var_alias_group = std::move(raw_declarations);
+			//meta.var_alias_group = std::move(raw_declarations);
 			meta.kind = DXIL::ResourceKind::CBuffer;
 			meta.instrumentation = instrumentation;
 
@@ -2409,7 +2409,7 @@ bool emit_gep_as_cbuffer_scalar_offset(Converter::Impl &impl, const llvm::GetEle
 	else
 	{
 		RawType raw_type = elem_type->isIntegerTy() ? RawType::Integer : RawType::Float;
-		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, RawWidth::B32, RawVecSize::V1);
+		//ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, RawWidth::B32, RawVecSize::V1);
 
 		Operation *access_chain_op = impl.allocate(
 		    spv::OpAccessChain, instruction, builder.makePointer(meta.storage, impl.get_type_id(elem_type)));
@@ -2480,7 +2480,7 @@ bool emit_cbuffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 		                   RawType::Integer : RawType::Float;
 
 		unsigned raw_bits = raw_width_to_bits(raw_width);
-		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, raw_width, RawVecSize::V1);
+		//ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, raw_width, RawVecSize::V1);
 
 		spv::Id array_index_id = build_index_divider(impl, instruction->getOperand(2), addr_shift, 1);
 
@@ -2605,7 +2605,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 		RawType raw_type = result_component_type->getTypeID() == llvm::Type::TypeID::IntegerTyID &&
 		                   scalar_alignment == 8 ? RawType::Integer : RawType::Float;
 
-		ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, alias_width, alias_vecsize);
+		//ptr_id = get_buffer_alias_handle(impl, meta, ptr_id, raw_type, alias_width, alias_vecsize);
 
 		spv::Id vec4_index = impl.get_id_for_value(instruction->getOperand(2));
 

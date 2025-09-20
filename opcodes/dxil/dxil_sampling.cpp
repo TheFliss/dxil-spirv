@@ -852,6 +852,7 @@ bool emit_texture_load_instruction(Converter::Impl &impl, const llvm::CallInst *
 	spv::Id coord[3] = {};
 
 	unsigned num_coords_full = 0, num_coords = 0;
+	LOGI("texture load image_id: %d\n", image_id);
 	if (!get_image_dimensions(impl, image_id, &num_coords_full, &num_coords))
 		return false;
 

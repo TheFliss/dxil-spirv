@@ -33,8 +33,8 @@ bool get_constant_operand(const llvm::Instruction *value, unsigned index, uint32
 spv::Id emit_u32x2_u32_add(Converter::Impl &impl, spv::Id u32x2_value, spv::Id u32_value);
 unsigned get_type_scalar_alignment(Converter::Impl &impl, const llvm::Type *type);
 
-spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
-                                spv::Id default_id, RawType type, RawWidth width, RawVecSize vecsize);
+//spv::Id get_buffer_alias_handle(Converter::Impl &impl, const Converter::Impl::ResourceMeta &meta,
+//                                spv::Id default_id, RawType type, RawWidth width, RawVecSize vecsize);
 
 bool type_is_16bit(const llvm::Type *data_type);
 bool type_is_64bit(const llvm::Type *data_type);

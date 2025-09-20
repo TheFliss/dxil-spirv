@@ -209,11 +209,11 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 
 	if (meta.storage == spv::StorageClassStorageBuffer)
 	{
-		spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, RawVecSize::V1);
+		//spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, RawVecSize::V1);
 
 		auto *chain = impl.allocate(spv::OpAccessChain,
 		                            builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
-		chain->add_id(ssbo_id);
+		chain->add_id(id);
 		chain->add_id(builder.makeUintConstant(0));
 		chain->add_id(addr);
 		impl.add(chain);
