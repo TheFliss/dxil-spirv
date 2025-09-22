@@ -545,6 +545,7 @@ struct Converter::Impl
 	};
 	using TypeLayoutFlags = uint32_t;
 
+	spv::ImageFormat get_real_uav_format(const llvm::Type *type);
 	spv::Id get_real_type_id(const llvm::Type *type, TypeLayoutFlags flags = 0);
 	spv::Id get_type_id(const llvm::Type *type, TypeLayoutFlags flags = 0);
 	spv::Id get_type_id(spv::Id id) const;

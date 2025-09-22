@@ -1737,7 +1737,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			continue;
 		auto *type_decoration = llvm::cast<llvm::UndefValue>(llvm::cast<llvm::ConstantAsMetadata>(uav->getOperand(1))->getValue());
 		auto *ptr_type = llvm::cast<llvm::PointerType>(type_decoration->getType());
-		spv::Id type_id1 = get_real_type_id(ptr_type->getElementType(), 0);
+		spv::ImageFormat real_format = get_real_uav_format(ptr_type->getElementType());
+		//spv::Id type_id1 = get_real_type_id(ptr_type->getElementType(), 0);
 
 		unsigned index = get_constant_metadata(uav, 0);
 		auto name = get_resource_name_metadata(uav, refl);
@@ -1745,7 +1746,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		unsigned bind_register = get_constant_metadata(uav, 4);
 		unsigned range_size = get_constant_metadata(uav, 5);
 
-		LOGI("uav name: %s real %d\n", name.c_str(), type_id1);
+		LOGI("uav name: %s real %d\n", name.c_str(), real_format);
 
 		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
 		{
@@ -1816,6 +1817,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		else if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
+			
 			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)));
 			if (access_meta.has_atomic_64bit)
 			{
@@ -2193,7 +2195,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				spv::Id type_id =
 				    builder.makeImageType(element_type_id, image_dimension_from_resource_kind(resource_kind), false,
 				                          image_dimension_is_arrayed(resource_kind),
-				                          image_dimension_is_multisampled(resource_kind), 2, format);
+				                          image_dimension_is_multisampled(resource_kind), 2, real_format);
 
 				if (range_size != 1)
 				{
@@ -4137,6 +4139,139 @@ spv::Id Converter::Impl::get_type_id(const llvm::Type *type, TypeLayoutFlags fla
 	}
 }
 
+spv::ImageFormat Converter::Impl::get_real_uav_format(const llvm::Type *type){
+	
+	switch (type->getTypeID())
+	{
+	case llvm::Type::TypeID::HalfTyID:
+		return support_native_fp16_operations() ? spv::ImageFormatR16f : spv::ImageFormatR32f;
+	case llvm::Type::TypeID::FloatTyID:
+		return spv::ImageFormatR32f;
+	case llvm::Type::TypeID::DoubleTyID:
+		return spv::ImageFormatR64i;
+
+	case llvm::Type::TypeID::IntegerTyID:
+	{
+		switch (type->getIntegerBitWidth())
+		{
+			case 1:
+			case 8:
+				return spv::ImageFormatR8i;
+			case 16:
+				return spv::ImageFormatR16i;
+			case 32:
+				return spv::ImageFormatR32i;
+			case 64:
+				return spv::ImageFormatR64i;
+			default:
+				return spv::ImageFormatUnknown;
+		}
+	}
+	case llvm::Type::TypeID::PointerTyID:
+	{
+		return get_real_uav_format(llvm::cast<llvm::PointerType>(type)->getElementType());
+	}
+	case llvm::Type::TypeID::ArrayTyID:
+	{
+		return get_real_uav_format(type->getArrayElementType());
+	}
+
+	case llvm::Type::TypeID::VectorTyID:
+	{
+		auto *vec_type = llvm::cast<llvm::VectorType>(type);
+		spv::ImageFormat el_format = get_real_uav_format(vec_type->getElementType());
+		switch (el_format)
+		{
+		case spv::ImageFormatR16f:
+			{
+				switch (vec_type->getVectorNumElements())
+				{
+				case 1:
+					return spv::ImageFormatR16f;
+				case 2:
+					return spv::ImageFormatRg16f;
+				case 3:
+					return spv::ImageFormatUnknown;
+				case 4:
+					return spv::ImageFormatRgba16f;
+				}
+			}
+		case spv::ImageFormatR32f:
+			{
+				switch (vec_type->getVectorNumElements())
+				{
+				case 1:
+					return spv::ImageFormatR32f;
+				case 2:
+					return spv::ImageFormatRg32f;
+				case 3:
+					return spv::ImageFormatUnknown;
+				case 4:
+					return spv::ImageFormatRgba32f;
+				}
+			}
+		case spv::ImageFormatR8i:
+			{
+				switch (vec_type->getVectorNumElements())
+				{
+				case 1:
+					return spv::ImageFormatR8i;
+				case 2:
+					return spv::ImageFormatRg8i;
+				case 3:
+					return spv::ImageFormatUnknown;
+				case 4:
+					return spv::ImageFormatRgba8i;
+				}
+			}
+		case spv::ImageFormatR16i:
+			{
+				switch (vec_type->getVectorNumElements())
+				{
+				case 1:
+					return spv::ImageFormatR16i;
+				case 2:
+					return spv::ImageFormatRg16i;
+				case 3:
+					return spv::ImageFormatUnknown;
+				case 4:
+					return spv::ImageFormatRgba16i;
+				}
+			}
+		case spv::ImageFormatR32i:
+			{
+				switch (vec_type->getVectorNumElements())
+				{
+				case 1:
+					return spv::ImageFormatR32i;
+				case 2:
+					return spv::ImageFormatRg32i;
+				case 3:
+					return spv::ImageFormatUnknown;
+				case 4:
+					return spv::ImageFormatRgba32i;
+				}
+			}
+		case spv::ImageFormatR64i:
+			return spv::ImageFormatR64i;
+		}
+		return spv::ImageFormatUnknown;
+	}
+
+	case llvm::Type::TypeID::StructTyID:
+	{
+		auto *struct_type = llvm::cast<llvm::StructType>(type);
+		auto m_type = struct_type->getStructElementType(0)->getTypeID();
+		if(m_type == llvm::Type::TypeID::StructTyID || m_type == llvm::Type::TypeID::ArrayTyID
+			 || m_type == llvm::Type::TypeID::PointerTyID)
+			return spv::ImageFormatUnknown;
+		return get_real_uav_format(struct_type->getStructElementType(0));
+	}
+	default:
+		return spv::ImageFormatUnknown;
+	}
+};
+
 spv::Id Converter::Impl::get_real_type_id(const llvm::Type *type, TypeLayoutFlags flags)
 {
 	auto &builder = spirv_module.get_builder();
@@ -4197,13 +4332,9 @@ spv::Id Converter::Impl::get_real_type_id(const llvm::Type *type, TypeLayoutFlag
 	case llvm::Type::TypeID::StructTyID:
 	{
 		auto *struct_type = llvm::cast<llvm::StructType>(type);
-		Vector<spv::Id> member_types;
-		member_types.reserve(struct_type->getStructNumElements());
-		LOGI("StructTyID size: %d\n", struct_type->getStructNumElements());
-		for (unsigned i = 0; i < struct_type->getStructNumElements(); i++)
-			member_types.push_back(get_type_id(struct_type->getStructElementType(i), flags & ~TYPE_LAYOUT_BLOCK_BIT));
-		LOGI("member: %d\n", member_types[0]);
-		return get_struct_type(member_types, flags, "");
+		llvm::Type* typ = struct_type->getStructElementType(0);
+		LOGI("member0: %d\n", typ->getTypeID());
+		return get_type_id(typ, flags & ~TYPE_LAYOUT_BLOCK_BIT);
 	}
 	default:
 		return get_type_id(type, flags);
