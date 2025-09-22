@@ -1,4 +1,10 @@
-# dxil-spirv
+# DXIL-SPIRV
+
+This fork of the project is primarily aimed at improving the experience and reverse engineering of DXBC shaders.
+
+It is assumed that the resulting spirv files are likely not Vulkan-ready, but rather can be decompiled into any shader language of your choice (though the emphasis will be more on HLSL).
+
+# Original description
 
 This project aims to provide translation of DXIL (SM 6.x) shaders to SPIR-V which can be used in the vkd3d project,
 which implements D3D12 on top of Vulkan.
