@@ -1251,12 +1251,17 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		auto var_meta = get_resource_variable_meta(srv);
 		if (!var_meta.is_active)
 			continue;
+		auto *type_decoration = llvm::cast<llvm::UndefValue>(llvm::cast<llvm::ConstantAsMetadata>(srv->getOperand(1))->getValue());
+		auto *ptr_type = llvm::cast<llvm::PointerType>(type_decoration->getType());
+		spv::ImageFormat real_format = get_real_uav_format(ptr_type->getElementType());
 
 		unsigned index = get_constant_metadata(srv, 0);
 		auto name = get_resource_name_metadata(srv, refl);
 		unsigned bind_space = get_constant_metadata(srv, 3);
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
+
+		LOGI("srv name: %s real %d\n", name.c_str(), real_format);
 
 		//LOGI("srv name: %s\n", name.c_str());
 
@@ -1520,7 +1525,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				type_id =
 				    builder.makeImageType(sampled_type_id, image_dimension_from_resource_kind(resource_kind), false,
 				                          image_dimension_is_arrayed(resource_kind),
-				                          image_dimension_is_multisampled(resource_kind), 1, spv::ImageFormatUnknown);
+				                          image_dimension_is_multisampled(resource_kind), 1, real_format);
+
+		LOGI("srv type_id real %d\n", type_id);
 				if (range_size != 1)
 				{
 					if (range_size == ~0u)
@@ -1532,7 +1539,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 
 			auto &ref = srv_index_to_reference[index];
 
-		//LOGI("srv type_id: %d\n", type_id);
+		LOGI("srv type_id: %d\n", type_id);
 
 			if (type_id)
 				ref.var_id = create_variable(storage, type_id, name.empty() ? nullptr : name.c_str());
@@ -1772,7 +1779,6 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			tags = llvm::dyn_cast<llvm::MDNode>(uav->getOperand(10));
 
 		unsigned stride = 0;
-		spv::ImageFormat format = spv::ImageFormatUnknown;
 
 		auto actual_component_type = DXIL::ComponentType::U32;
 		auto effective_component_type = actual_component_type;
@@ -1817,7 +1823,6 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		else if (tags && get_constant_metadata(tags, 0) == 0)
 		{
 			// Sampled format.
-			
 			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)));
 			if (access_meta.has_atomic_64bit)
 			{
@@ -1831,15 +1836,11 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		{
 			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
 			// Field 1 is stride, but we don't care about that unless we will support an SSBO path.
-			format = spv::ImageFormatR32ui;
 			if (tags)
 				stride = get_constant_metadata(tags, 1);
 		}
 
 		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
-
-		if (!get_uav_image_format(resource_kind, actual_component_type, access_meta, format))
-			return false;
 
 		DescriptorTableEntry local_table_entry = {};
 		int local_root_signature_entry = get_local_root_signature_entry(
@@ -1916,7 +1917,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		bindless_info.kind = resource_kind;
 		bindless_info.desc_set = vulkan_binding.buffer_binding.descriptor_set;
 		bindless_info.binding = vulkan_binding.buffer_binding.binding;
-		bindless_info.format = format;
+		bindless_info.format = real_format;
 		bindless_info.uav_read = access_meta.has_read;
 		bindless_info.uav_written = access_meta.has_written;
 		bindless_info.uav_coherent = globally_coherent;
@@ -2275,7 +2276,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 					// Treat default as texel buffer, as it's the more compatible way of implementing buffer types in DXIL.
 					auto element_type_id = get_type_id(DXIL::ComponentType::U32, 1, 1);
 					type_id = builder.makeImageType(
-						element_type_id, spv::DimBuffer, false, false, false, 2, format);
+						element_type_id, spv::DimBuffer, false, false, false, 2, real_format);
 					counter_storage = spv::StorageClassUniformConstant;
 				}
 
